@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 public class Polygon {
 
-    private ArrayList<Point> points;
+    protected ArrayList<Point> points;
 
     public Polygon() {
         this.points = new ArrayList<>();
@@ -20,5 +20,11 @@ public class Polygon {
 
     public Point getPoint(int index) {
         return this.points.get(index);
+    }
+    public ArrayList<Point> getPoints() {
+        return this.points;
+    }
+    public void clearPolygon(){
+        points.clear();
     }
 }

@@ -10,5 +10,11 @@ public class Rectangle extends Polygon{
         addPoint(p3);
         addPoint(new Point(p3.x, p1.y));
     }
+    public Point returnCenterPointsForElipse()
+    {
+        int centerX = (this.points.get(0).x + this.points.get(2).x) / 2;
+        int centerY = (this.points.get(0).y + this.points.get(2).y) / 2;
+        return new Point(centerX,centerY);
+    }
 }
 

@@ -1,20 +1,25 @@
 import fill.ScanLineFiller;
 import fill.SeedFiller;
-import model.Line;
+import model.*;
 import model.Point;
 import model.Polygon;
+import model.Rectangle;
 import rasterize.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.ArrayList;
+
 public class Canvas {
 
 	private JPanel panel;
 	private RasterBufferedImage raster;
 	private LineRasterizer lineRasterizer;
 	private PolygonRasterizer polygonRasterizer;
+	private EllipseRasterizer ellipseRasterizer;
 	private Polygon polygon;
+	private Rectangle rectangle;
 	private int mouseX, mouseY;
 	private int x,y;
 
@@ -27,10 +32,12 @@ public class Canvas {
 		frame.setResizable(true);
 		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
 
+
 		raster = new RasterBufferedImage(width, height);
-		polygonRasterizer = new PolygonRasterizer(lineRasterizer);
 		polygon = new Polygon();
 		lineRasterizer = new FilledLineRasterizer(raster);
+		polygonRasterizer = new PolygonRasterizer(lineRasterizer);
+		ellipseRasterizer = new EllipseRasterizer(lineRasterizer);
 
 		Graphics g = raster.getGraphics();
 		g.setColor(Color.YELLOW);
@@ -45,50 +52,60 @@ public class Canvas {
 		};
 		panel.setPreferredSize(new Dimension(width, height));
 
+		panel.setFocusable(true);
+		panel.requestFocus();
+		panel.requestFocusInWindow();
+
 		frame.add(panel, BorderLayout.CENTER);
 		frame.pack();
 		frame.setVisible(true);
 
-		panel.addMouseListener(new MouseAdapter() {
-			@Override
-			public void mousePressed(MouseEvent e) {
-				//ScanLineFiller scanLineFiller = new ScanLineFiller(lineRasterizer,polygonRasterizer,polygon);
-				//scanLineFiller.fill();
-
-				if(e.getButton() == MouseEvent.BUTTON3) {
-					SeedFiller seedFiller = new SeedFiller(
-							raster,
-							e.getX(),
-							e.getY(),
-							0xff0000,
-							raster.getPixel(e.getX(),e.getY()));
-					seedFiller.fill();
-				}
-				panel.repaint();
-			}
-		});
 		panel.addKeyListener(new KeyAdapter() {
 			@Override
 			public void keyPressed(KeyEvent e){//při stisknutí klávesy C, vyčisti celé plátno
 				if(e.getKeyCode() == KeyEvent.VK_C){
 					clear(0x2f2f2f);
+					polygon.clearPolygon();
 					panel.repaint();
 				}
 			}
+			@Override
+			public void keyReleased(KeyEvent e){
+				if(e.getKeyCode() == KeyEvent.VK_CONTROL){
+					polygonRasterizer.rasterize(polygon);
+					panel.repaint();
+				}
+				if(e.getKeyCode() == KeyEvent.VK_ALT)
+				{
+					Point p1 = polygon.getPoint(0);
+					Point p3 = polygon.getPoint(1);
+					rectangle = new Rectangle(p1,p3);
+					polygonRasterizer.rasterize(rectangle);
+					panel.repaint();
+					polygon.clearPolygon();
+				}
+			}
 		});
+
+		panel.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mousePressed(MouseEvent e) {
+				if(e.getButton() == MouseEvent.BUTTON3) {
+					SeedFiller seedFiller = new SeedFiller(raster, e.getX(), e.getY(), 0xff0000, raster.getPixel(e.getX(),e.getY()));
+					seedFiller.fill();
+				}
+				panel.repaint();
+			}
+		});
+
 		panel.addMouseListener(new MouseAdapter() {
 		@Override
 		public void mouseReleased(MouseEvent e){
 			lineRasterizer.setColor(16711935);//růžová
-			if(SwingUtilities.isRightMouseButton(e)){//dle stisknuté klávesy vybere, co se má vykreslit
-				clear(0x2f2f2f);
-				panel.repaint();
-			}
-			else if (SwingUtilities.isLeftMouseButton(e)) {//přesné vykreslování
+				if (SwingUtilities.isLeftMouseButton(e)) {//přesné vykreslování
 				if(e.isControlDown()){
-					Point p = new Point(e.getX(), e.getY());
+					Point p = new Point(e.getX(),e.getY());
 					polygon.addPoint(p);
-					polygonRasterizer.rasterize(polygon);
 				}
 				else if(e.isShiftDown()){
 					clear(0x2f2f2f);
@@ -96,6 +113,13 @@ public class Canvas {
 					y = e.getY();
 					drawPrecision(mouseX,x,mouseY,y);
 					panel.repaint();
+				}
+				else if(e.isAltDown()){
+					clear(0x2f2f2f);
+					x = e.getX();
+					y = e.getY();
+					Point p = new Point(e.getX(), e.getY());
+					polygon.addPoint(p);
 				}
 				else {//standartní vykreslení
 					clear(0x2f2f2f);
@@ -128,7 +152,14 @@ public class Canvas {
 			public void mouseDragged(MouseEvent e) {
 				lineRasterizer.setColor(16711680);//červená
 				if(SwingUtilities.isLeftMouseButton(e)){//dle stisknuté klávesy vybere, co se má vykreslit
-					if(e.isShiftDown())//přesné vykreslování
+					if (e.isControlDown()) {//vykreslování polygonu
+						clear(0x2f2f2f);
+						polygon.getPoints().remove(polygon.getPoints().get(polygon.getPoints().size() - 1));
+						polygon.getPoints().add(new Point(e.getX(),e .getY()));
+						drawDottedPolygon(polygon.getPoints());
+						panel.repaint();
+					}
+					else if(e.isShiftDown())//přesné vykreslování
 					{
 						clear(0x2f2f2f);
 						drawDottedPrecision(mouseX,e.getX(),mouseY,e.getY());
@@ -169,6 +200,17 @@ public class Canvas {
 	}
 	public void draw(int x1, int x2, int y1, int y2) {
 		lineRasterizer.rasterize(x1, y1, x2,y2);
+	}
+	public void drawDottedPolygon(ArrayList<Point> PolygonPoints){ //vykreslení polygonu přerušovanou čarou
+		model.Point[] arrayPoint = PolygonPoints.toArray(new model.Point[PolygonPoints.size()]);
+		for(int i = 0; i < arrayPoint.length; i++){
+			if(i+1 < arrayPoint.length) {//podmínka pro poslední bod
+				lineRasterizer.rasterizeDottedLine(arrayPoint[i].x, arrayPoint[i].y, arrayPoint[i + 1].x, arrayPoint[i + 1].y);
+			}
+			else{
+				lineRasterizer.rasterizeDottedLine(arrayPoint[i].x,arrayPoint[i].y, arrayPoint[0].x, arrayPoint[0].y);
+			}
+		}
 	}
 	public static void main(String[] args) {
 		SwingUtilities.invokeLater(() -> new Canvas(800, 600).start());

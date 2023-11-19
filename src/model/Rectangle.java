@@ -16,5 +16,14 @@ public class Rectangle extends Polygon{
         int centerY = (this.points.get(0).y + this.points.get(2).y) / 2;
         return new Point(centerX,centerY);
     }
+
+    public ArrayList<Integer> returnRadiusOfElipse(){
+        int width = (this.points.get(0).x - this.points.get(3).x);
+        int height = (this.points.get(0).y - this.points.get(1).y);
+        ArrayList<Integer> dimensions = new ArrayList<Integer>();
+        dimensions.add(width);
+        dimensions.add(height);
+        return dimensions;
+    }
 }
 

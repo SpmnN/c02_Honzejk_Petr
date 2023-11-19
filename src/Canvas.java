@@ -19,6 +19,7 @@ public class Canvas {
 	private PolygonRasterizer polygonRasterizer;
 	private EllipseRasterizer ellipseRasterizer;
 	private Polygon polygon;
+	private Ellipse ellipse;
 	private Rectangle rectangle;
 	private int mouseX, mouseY;
 	private int x,y;
@@ -81,6 +82,11 @@ public class Canvas {
 					Point p3 = polygon.getPoint(1);
 					rectangle = new Rectangle(p1,p3);
 					polygonRasterizer.rasterize(rectangle);
+
+					ArrayList<Integer> radius = rectangle.returnRadiusOfElipse();
+					Point center = rectangle.returnCenterPointsForElipse();
+					ellipse = new Ellipse(radius.get(0) /2,radius.get(1)/2 ,center.x, center.y);
+					ellipseRasterizer.rasterize(ellipse.xCenter,ellipse.yCenter,ellipse.radiusX,ellipse.radiusY);
 					panel.repaint();
 					polygon.clearPolygon();
 				}
@@ -90,9 +96,16 @@ public class Canvas {
 		panel.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mousePressed(MouseEvent e) {
-				if(e.getButton() == MouseEvent.BUTTON3) {
+				if(e.isShiftDown()&&e.getButton()==MouseEvent.BUTTON3){
 					SeedFiller seedFiller = new SeedFiller(raster, e.getX(), e.getY(), 0xff0000, raster.getPixel(e.getX(),e.getY()));
 					seedFiller.fill();
+					System.out.println("aaa");
+				}
+				else if(e.getButton() == MouseEvent.BUTTON3)
+				{
+					ScanLineFiller scanLineFiller = new ScanLineFiller(lineRasterizer,polygonRasterizer,polygon);
+					scanLineFiller.fill(raster);
+					polygonRasterizer.rasterize(polygon);
 				}
 				panel.repaint();
 			}
@@ -103,10 +116,7 @@ public class Canvas {
 		public void mouseReleased(MouseEvent e){
 			lineRasterizer.setColor(16711935);//růžová
 				if (SwingUtilities.isLeftMouseButton(e)) {//přesné vykreslování
-				if(e.isControlDown()){
-					Point p = new Point(e.getX(),e.getY());
-					polygon.addPoint(p);
-				}
+				if(e.isControlDown()){}
 				else if(e.isShiftDown()){
 					clear(0x2f2f2f);
 					x = e.getX();
@@ -136,6 +146,7 @@ public class Canvas {
 					if (e.isControlDown()) {
 						mouseX = e.getX();
 						mouseY = e.getY();
+						polygon.getPoints().add(new model.Point(mouseX, mouseY));
 					} else if (e.isShiftDown()) {
 						mouseX = e.getX();
 						mouseY = e.getY();
